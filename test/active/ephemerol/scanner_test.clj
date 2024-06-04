@@ -8,32 +8,32 @@
 (defn compact-partition-index
   [indices encodings bits c]
   (let [mask (- (bit-shift-left 1 bits) 1)
-	scalar-value (int c)]
+        scalar-value (int c)]
     (get encodings
          (+ (aget indices
                   (bit-shift-right scalar-value bits))
             (bit-and scalar-value mask)))))
 
 (deftest compact-table
-  (let [part
-        (list
-         (char-set \A)
-         (char-set \E)
-         (char-set \a)
-         (char-set \B \D)
-         (char-set \C \b))
-        [indices encodings] (partition->compact-table part 8)]
-    (is (= 0 (compact-partition-index indices encodings 8 \A)))
-    (is (= 1 (compact-partition-index indices encodings 8 \E)))
-    (is (= 2 (compact-partition-index indices encodings 8 \a)))
-    (is (= 3 (compact-partition-index indices encodings 8 \B)))
-    (is (= 3 (compact-partition-index indices encodings 8 \D)))
-    (is (= 4 (compact-partition-index indices encodings 8 \C)))
-    (is (= 4 (compact-partition-index indices encodings 8 \b)))
-    (is (= -1 (compact-partition-index indices encodings 8 \F)))
-    (is (= -1 (compact-partition-index indices encodings 8 \G)))
-    (is (= -1 (compact-partition-index indices encodings 8 \0)))
-    (is (= -1 (compact-partition-index indices encodings 8 \c)))))
+         (let [part
+               (list
+                 (char-set \A)
+                 (char-set \E)
+                 (char-set \a)
+                 (char-set \B \D)
+                 (char-set \C \b))
+               [indices encodings] (partition->compact-table part 8)]
+           (is (= 0 (compact-partition-index indices encodings 8 \A)))
+           (is (= 1 (compact-partition-index indices encodings 8 \E)))
+           (is (= 2 (compact-partition-index indices encodings 8 \a)))
+           (is (= 3 (compact-partition-index indices encodings 8 \B)))
+           (is (= 3 (compact-partition-index indices encodings 8 \D)))
+           (is (= 4 (compact-partition-index indices encodings 8 \C)))
+           (is (= 4 (compact-partition-index indices encodings 8 \b)))
+           (is (= -1 (compact-partition-index indices encodings 8 \F)))
+           (is (= -1 (compact-partition-index indices encodings 8 \G)))
+           (is (= -1 (compact-partition-index indices encodings 8 \0)))
+           (is (= -1 (compact-partition-index indices encodings 8 \c)))))
 
 (defn eval-scanner
   [scanner]
@@ -44,199 +44,215 @@
 
 (def grosch-scanner-spec
   (scanner-spec
-   ((/ char-set:letter
-       (* (or char-set:letter char-set:digit)))
-    (fn [lexeme position input input-position]
-      (make-scan-result [:ident-symbol lexeme]
-                        input input-position)))
-   ((+ char-set:digit)
-    (fn [lexeme position input input-position]
-      (make-scan-result [:decimal-symbol (Integer/parseInt lexeme)]
-                        input input-position)))
-   ((/ (+ (char-set \0 \1 \2 \3 \4 \5 \6 \7))
-       \Q)
-    (fn [lexeme position input input-position]
-      (make-scan-result [:octal-symbol
-                         (Integer/parseInt
-                          (.substring lexeme 0 (- (count lexeme) 1))
-                          8)]
-                        input input-position)))
-   ("BEGIN"
-    (fn [lexeme position input input-position]
-      (make-scan-result [:begin-symbol nil]
-                        input input-position)))
-   ("END"
-    (fn [lexeme position input input-position]
-      (make-scan-result [:end-symbol nil]
-                        input input-position)))
-   (":="
-    (fn [lexeme position input input-position]
-      (make-scan-result [:assign-symbol nil]
-                        input input-position)))))
+    ((/ char-set:letter
+        (* (or char-set:letter char-set:digit)))
+     (fn [lexeme position input input-position]
+       (make-scan-result [:ident-symbol lexeme]
+                         input input-position)))
+    ((+ char-set:digit)
+     (fn [lexeme position input input-position]
+       (make-scan-result [:decimal-symbol (Integer/parseInt lexeme)]
+                         input input-position)))
+    ((/ (+ (char-set \0 \1 \2 \3 \4 \5 \6 \7))
+        \Q)
+     (fn [lexeme position input input-position]
+       (make-scan-result [:octal-symbol
+                          (Integer/parseInt
+                            (.substring lexeme 0 (- (count lexeme) 1))
+                            8)]
+                         input input-position)))
+    ("BEGIN"
+      (fn [lexeme position input input-position]
+        (make-scan-result [:begin-symbol nil]
+                          input input-position)))
+    ("END"
+      (fn [lexeme position input input-position]
+        (make-scan-result [:end-symbol nil]
+                          input input-position)))
+    (":="
+      (fn [lexeme position input input-position]
+        (make-scan-result [:assign-symbol nil]
+                          input input-position)))))
 
 (def grosch-scanner (compute-scanner grosch-scanner-spec))
 
 (def grosch-scan-one (make-scan-one (eval-scanner grosch-scanner)))
 
 (deftest grosch-one
-  
-  (let [check-one
-        (fn [input enc rest row col]
-          (let [scan-result (grosch-scan-one (string->list input)
-                                             (make-position 1 0))
-                the-enc (scan-result-data scan-result)
-                the-rest (scan-result-input scan-result)
-                the-pos (scan-result-input-position scan-result)]
-            (is (= enc the-enc))
-            (is (= the-rest (string->list rest)))
-            (is (= the-pos (make-position row col)))))]
 
-    (check-one "foo A" [:ident-symbol "foo"] " A" 1 3)
-    (check-one "BEGIN A" [:begin-symbol nil] " A" 1 5)
-    (check-one "END A" [:end-symbol nil] " A" 1 3)
-    (check-one ":= A" [:assign-symbol nil] " A" 1 2)
-    (check-one "999 A" [:decimal-symbol 999] " A" 1 3)
-    (check-one "777Q A" [:octal-symbol 511] " A" 1 4)))
+         (let [check-one
+               (fn [input enc rest row col]
+                 (let [scan-result (grosch-scan-one (string->list input)
+                                                    (make-position 1 0))
+                       the-enc (scan-result-data scan-result)
+                       the-rest (scan-result-input scan-result)
+                       the-pos (scan-result-input-position scan-result)]
+                   (is (= enc the-enc))
+                   (is (= the-rest (string->list rest)))
+                   (is (= the-pos (make-position row col)))))
+               check-keyword (fn [input scan-keyword]
+                               (let [scan-result
+                                     (grosch-scan-one (string->list input)
+                                                      (make-position 1 0))
+                                     the-keyword (first (scan-result-data scan-result)
+                                                        )]
+                                 (is (= scan-keyword the-keyword))
+                                 ))]
+
+
+           (check-one "foo A" [:ident-symbol "foo"] " A" 1 3)
+           (check-one "BEGIN A" [:begin-symbol nil] " A" 1 5)
+           (check-one "END A" [:end-symbol nil] " A" 1 3)
+           (check-one ":= A" [:assign-symbol nil] " A" 1 2)
+           (check-one "999 A" [:decimal-symbol 999] " A" 1 3)
+           (check-one "777Q A" [:octal-symbol 511] " A" 1 4)
+
+           (check-keyword "foo A" :ident-symbol)
+           (check-keyword "BEGIN A" :begin-symbol)
+           (check-keyword "999 A" :decimal-symbol)
+           (check-keyword "777Q A" :octal-symbol)))
+
+
 
 
 (def test-scanner-spec
   (scanner-spec
-   ("A"
-    (fn [lexeme position input input-position]
-      (make-scan-result [:a nil]
-                        input input-position)))
-   ("ARF"
-    (fn [lexeme position input input-position]
-      (make-scan-result [:arf nil]
-                        input input-position)))
-   ("ARFL"
-    (fn [lexeme position input input-position]
-      (make-scan-result [:arfl nil]
-                        input input-position)))
-   ((/ (+ char-set:letter))
-    (fn [lexeme position input input-position]
-      (make-scan-result [:ident lexeme]
-                        input input-position)))))
+    ("A"
+      (fn [lexeme position input input-position]
+        (make-scan-result [:a nil]
+                          input input-position)))
+    ("ARF"
+      (fn [lexeme position input input-position]
+        (make-scan-result [:arf nil]
+                          input input-position)))
+    ("ARFL"
+      (fn [lexeme position input input-position]
+        (make-scan-result [:arfl nil]
+                          input input-position)))
+    ((/ (+ char-set:letter))
+     (fn [lexeme position input input-position]
+       (make-scan-result [:ident lexeme]
+                         input input-position)))))
 
 (deftest test-1
-  (let [scanner (compute-scanner test-scanner-spec)
-        scan-one (make-scan-one (eval-scanner scanner))
-        check-one
-        (fn [input enc]
-          (let [scan-result (scan-one (string->list input) (make-position 1 0))
-                the-enc (scan-result-data scan-result)
-                the-rest (scan-result-input scan-result)
-                the-pos (scan-result-input-position scan-result)]
-            (is (= enc the-enc))))]
+         (let [scanner (compute-scanner test-scanner-spec)
+               scan-one (make-scan-one (eval-scanner scanner))
+               check-one
+               (fn [input enc]
+                 (let [scan-result (scan-one (string->list input) (make-position 1 0))
+                       the-enc (scan-result-data scan-result)
+                       the-rest (scan-result-input scan-result)
+                       the-pos (scan-result-input-position scan-result)]
+                   (is (= enc the-enc))))]
 
-    (check-one "A" [:a nil])
-    (check-one "ARF" [:arf nil])
-    (check-one "ARFL" [:arfl nil])
-    (check-one "ARFLG" [:ident "ARFLG"])
-    (check-one "ARG" [:ident "ARG"])
-    (check-one "AR" [:ident "AR"])
-    (check-one "" nil)))
+           (check-one "A" [:a nil])
+           (check-one "ARF" [:arf nil])
+           (check-one "ARFL" [:arfl nil])
+           (check-one "ARFLG" [:ident "ARFLG"])
+           (check-one "ARG" [:ident "ARG"])
+           (check-one "AR" [:ident "AR"])
+           (check-one "" nil)))
 
 (def bol-scanner-spec
   (scanner-spec
-   ((% "A")
-    (fn [lexeme position input input-position]
-      (make-scan-result :%a input input-position)))
-   ("A"
-    (fn [lexeme position input input-position]
-      (make-scan-result :a input input-position)))
-   (char-set:whitespace 
-    (fn [lexeme position input input-position]
-      (make-scan-result :whitespace
-                        input input-position)))))
+    ((% "A")
+     (fn [lexeme position input input-position]
+       (make-scan-result :%a input input-position)))
+    ("A"
+      (fn [lexeme position input input-position]
+        (make-scan-result :a input input-position)))
+    (char-set:whitespace
+      (fn [lexeme position input input-position]
+        (make-scan-result :whitespace
+                          input input-position)))))
 
 (deftest bol-1
-  (let [scanner (compute-scanner bol-scanner-spec)
-        scan-one (make-scan-one (eval-scanner scanner))
-        check-one
-        (fn [input enc]
-          (let [[output input input-position]
-                (scan-to-list scan-one (string->list input) (make-position 1 0))]
-            (is (= enc output))))]
+         (let [scanner (compute-scanner bol-scanner-spec)
+               scan-one (make-scan-one (eval-scanner scanner))
+               check-one
+               (fn [input enc]
+                 (let [[output input input-position]
+                       (scan-to-list scan-one (string->list input) (make-position 1 0))]
+                   (is (= enc output))))]
 
-    (check-one "AAAA" '(:%a :a :a :a))
-    (check-one (str \A \A \newline \A \A \A) '(:%a :a :whitespace :%a :a :a))))
+           (check-one "AAAA" '(:%a :a :a :a))
+           (check-one (str \A \A \newline \A \A \A) '(:%a :a :whitespace :%a :a :a))))
 
 (def eol-scanner-spec
   (scanner-spec
-   (($ (% "A"))
-    (fn [lexeme position input input-position]
-      (make-scan-result :$%a
-                        input input-position)))
-   ((% "A")
-    (fn [lexeme position input input-position]
-      (make-scan-result :%a
-                        input input-position)))
-   (($ "A")
-    (fn [lexeme position input input-position]
-      (make-scan-result :$a
-                        input input-position)))
-   ("A"
-    (fn [lexeme position input input-position]
-      (make-scan-result :a
-                        input input-position)))
-   (char-set:whitespace 
-    (fn [lexeme position input input-position]
-      (make-scan-result :whitespace
-                        input input-position)))))
+    (($ (% "A"))
+     (fn [lexeme position input input-position]
+       (make-scan-result :$%a
+                         input input-position)))
+    ((% "A")
+     (fn [lexeme position input input-position]
+       (make-scan-result :%a
+                         input input-position)))
+    (($ "A")
+     (fn [lexeme position input input-position]
+       (make-scan-result :$a
+                         input input-position)))
+    ("A"
+      (fn [lexeme position input input-position]
+        (make-scan-result :a
+                          input input-position)))
+    (char-set:whitespace
+      (fn [lexeme position input input-position]
+        (make-scan-result :whitespace
+                          input input-position)))))
 
 (deftest eol-1
-  (let [scanner (compute-scanner eol-scanner-spec)
-        scan-one (make-scan-one (eval-scanner scanner))
-        check-one
-        (fn [input enc]
-          (let [[output input input-position]
-                (scan-to-list scan-one (string->list input) (make-position 1 0))]
-            (is (= enc output))))]
+         (let [scanner (compute-scanner eol-scanner-spec)
+               scan-one (make-scan-one (eval-scanner scanner))
+               check-one
+               (fn [input enc]
+                 (let [[output input input-position]
+                       (scan-to-list scan-one (string->list input) (make-position 1 0))]
+                   (is (= enc output))))]
 
-    (check-one "AAAA" '(:%a :a :a :$a))
-    (check-one (str \A \A \newline \A \newline \A \A \A) '(:%a :$a :whitespace :$%a :whitespace :%a :a :$a))))
+           (check-one "AAAA" '(:%a :a :a :$a))
+           (check-one (str \A \A \newline \A \newline \A \A \A) '(:%a :$a :whitespace :$%a :whitespace :%a :a :$a))))
 
 (def eof-test-scanner-spec
   (scanner-spec
-   ("A"
-    (fn [lexeme position input input-position]
-      (make-scan-result [:a nil]
-                        input input-position)))
-   ("ARF"
-    (fn [lexeme position input input-position]
-      (make-scan-result [:arf nil]
-                        input input-position)))
-   ("ARFL"
-    (fn [lexeme position input input-position]
-      (make-scan-result [:arfl nil]
-                        input input-position)))
-   ((/ (+ char-set:letter))
-    (fn [lexeme position input input-position]
-      (make-scan-result [:ident lexeme]
-                        input input-position)))
-   (<<eof>>
-    (fn [lexeme position input input-position]
-      (make-scan-result [:eof lexeme]
-                        input input-position)))))
-	 	
+    ("A"
+      (fn [lexeme position input input-position]
+        (make-scan-result [:a nil]
+                          input input-position)))
+    ("ARF"
+      (fn [lexeme position input input-position]
+        (make-scan-result [:arf nil]
+                          input input-position)))
+    ("ARFL"
+      (fn [lexeme position input input-position]
+        (make-scan-result [:arfl nil]
+                          input input-position)))
+    ((/ (+ char-set:letter))
+     (fn [lexeme position input input-position]
+       (make-scan-result [:ident lexeme]
+                         input input-position)))
+    (<<eof>>
+      (fn [lexeme position input input-position]
+        (make-scan-result [:eof lexeme]
+                          input input-position)))))
+
 
 (deftest eof-test-1
-  (let [scanner (compute-scanner eof-test-scanner-spec)
-        scan-one (make-scan-one (eval-scanner scanner))
-        check-one
-        (fn [input enc]
-          (let [scan-result (scan-one (string->list input) (make-position 1 0))
-                the-enc (scan-result-data scan-result)]
-            (is (= enc the-enc))))]
+         (let [scanner (compute-scanner eof-test-scanner-spec)
+               scan-one (make-scan-one (eval-scanner scanner))
+               check-one
+               (fn [input enc]
+                 (let [scan-result (scan-one (string->list input) (make-position 1 0))
+                       the-enc (scan-result-data scan-result)]
+                   (is (= enc the-enc))))]
 
-      (check-one "A" [:a nil])
-      (check-one "ARF" [:arf nil])
-      (check-one "ARFL" [:arfl nil])
-      (check-one "ARFLG" [:ident "ARFLG"])
-      (check-one "ARG" [:ident "ARG"])
-      (check-one "AR" [:ident "AR"])
-      (check-one "" [:eof ""])))
+           (check-one "A" [:a nil])
+           (check-one "ARF" [:arf nil])
+           (check-one "ARFL" [:arfl nil])
+           (check-one "ARFLG" [:ident "ARFLG"])
+           (check-one "ARG" [:ident "ARG"])
+           (check-one "AR" [:ident "AR"])
+           (check-one "" [:eof ""])))
 
 ; (define type-list '())
 ; (define stream-test-scanner-spec
