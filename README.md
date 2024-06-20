@@ -13,7 +13,8 @@ A Scanner generator for usage with lawrence (LR Parser Generator)
 
 ## Usage
 
-
+How to use this code / application you find in
+[**REFERENCE.md**](./doc/REFERENCE.md)
 ## License
 
 Copyright © 2015-2024 Active Group GmbH

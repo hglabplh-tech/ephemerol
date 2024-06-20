@@ -1,4 +1,4 @@
-(defproject de.active-group/ephemerol-brain-scan "0.6.0-SNAPSHOT"
+(defproject de.active-group/ephemerol "0.6.0-SNAPSHOT"
   :description "Ephemerol: Scanner generator"
   :url "http://github.com/active-group/ephemerol"
   :license {:name "Eclipse Public License"
