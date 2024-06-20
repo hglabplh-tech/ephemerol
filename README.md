@@ -19,5 +19,4 @@ How to use this code / application you find in
 
 Copyright © 2015-2024 Active Group GmbH
 
-Distributed under the Eclipse Public License either version 2.0 or (at
-your option) any later version.
+Distributed under the Eclipse Public License either version 2.0.
