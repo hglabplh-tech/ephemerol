@@ -286,6 +286,61 @@ defined to create and manipulate inversion lists:
                           input input-position)))))
 ```
 
+### Generating a specialized scanner 
 
+_**The first step is to define a scan-one scanner definition**_
 
+```clojure
+(def scan-one
+  (scanner-run/make-scan-one
+    (eval (scanner-run/scanner->expression 
+            (scanner/compute-scanner scanner-specification)))))
 
+```
+_**Now scan-one is usable and we can go on:**_
+
+We are defining a real complete scan functionality.
+
+```clojure
+(defn scan
+  [input]
+  (let [scanned (scanner-run/scan-to-list scan-one (scanner-run/string->list input)
+                                          (scanner-run/make-position 1 0))
+        scan-result (first scanned)]
+    (if (scanner-run/scan-error? scan-result)
+      ;; handle scan error
+      (throw (Exception. (pr-str scanned)))
+      scan-result)))
+```
+
+_**And after that we are able to generate a specialized scanner**_
+
+Here it is shown how to define and run a scanner in a waythat the scanner output of Ephemerol
+fits to the format of the input needed by lawrence See 
+[Lawrence LR Parser Generator Reference](https://github.com/hglabplh-tech/lawrence/blob/b471760c61fa2aacebefe9821742e99f369d9591/doc/REFERENCE.md) 
+for further explanation.
+```clojure
+;; parse scanned input
+(defn parse
+  [input]
+  (lr-parser/parse grammar 1 :slr input))
+
+;; scan and parse input
+(def scan+parse
+  (comp parse scan))
+
+;; example
+(scan+parse "1+2*(65/5)")
+```
+
+_**Here is the code to write out a scanner as a own program "blubber-scan.clj ;-)"**_
+
+```clojure
+ (scanner-run/write-scanner-ns (scanner/compute-scanner core/scanner-specification)
+                               ;; namespace of scanner as symbol
+                                'parser.generated-scanner 
+                               ;; the imports we need in te spcialized scanner.
+                                '([active.lawrence.runtime :as lr-runtime]
+                                  [active.lawrence.grammar :as lr-grammar]                                  
+                                  [parser.core :refer [keyword-result number-result]])
+```
